@@ -1,34 +1,56 @@
-// api/ai-suggest.js - TEST CORS + ONLINE, senza OpenAI
+// api/ai-suggest.js - TEST CORS + ONLINE, versione Edge
 
-// Handler stile Node.js per Vercel
-export default async function handler(req, res) {
-  // CORS: questi header vengono messi SEMPRE
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+export const config = { runtime: "edge" };
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+export default async function handler(req) {
+  const { method } = req;
 
   // Preflight CORS (OPTIONS)
-  if (req.method === "OPTIONS") {
-    res.status(204).end();
-    return;
+  if (method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
   }
 
   // Se chiami a mano via GET, risponde con messaggio di info
-  if (req.method === "GET") {
-    res.status(200).json({ info: "AI endpoint attivo, usare POST" });
-    return;
+  if (method === "GET") {
+    return new Response(
+      JSON.stringify({ info: "AI endpoint attivo, usare POST" }),
+      {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      }
+    );
   }
 
-  // Per qualsiasi altro metodo diverso da POST → errore
-  if (req.method !== "POST") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
+  // Se non è POST → errore
+  if (method !== "POST") {
+    return new Response(
+      JSON.stringify({ error: "Method not allowed", method }),
+      {
+        status: 405,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      }
+    );
   }
 
   // Qui gestiamo la POST dalla tua app WI-PRO
   let body = {};
   try {
-    body = req.body || {};
+    body = await req.json();
   } catch (e) {
     body = {};
   }
@@ -37,7 +59,7 @@ export default async function handler(req, res) {
   const vigneto  = body.vigneto?.nome || "-";
   const opName   = body.opName || "";
 
-  let text = `TEST ONLINE OK (handler di test)
+  let text = `TEST ONLINE OK (handler Edge di test)
 Vigneto: ${vigneto}
 Parole chiave ricevute: ${keywords}`;
 
@@ -45,5 +67,14 @@ Parole chiave ricevute: ${keywords}`;
     text += `\nOperazione: ${opName}`;
   }
 
-  res.status(200).json({ text });
+  return new Response(
+    JSON.stringify({ text }),
+    {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+      },
+    }
+  );
 }
