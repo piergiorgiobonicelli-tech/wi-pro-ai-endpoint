@@ -1,59 +1,38 @@
-// api/ai-suggest.js - TEST CORS SENZA OPENAI
+// api/ai-suggest.js - TEST CORS Node-style
 
-export const config = { runtime: "edge" };
+export default async function handler(req, res) {
+  // Headers CORS comuni a tutte le risposte
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-export default async function handler(req) {
-  const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
-
-  // Preflight CORS (OPTIONS)
+  // Preflight CORS
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: corsHeaders,
-    });
+    res.status(204).end();
+    return;
   }
 
   if (req.method !== "POST") {
-    return new Response(
-      JSON.stringify({ error: "Use POST" }),
-      {
-        status: 405,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    res.status(405).json({ error: "Use POST" });
+    return;
   }
 
-  // prova: leggiamo il body ma anche se è vuoto non è un problema
   let body = {};
   try {
-    body = await req.json();
+    // Su Vercel, se Content-Type è JSON, req.body è già parsato
+    body = req.body || {};
   } catch (e) {
-    // se non è JSON valido, ignoriamo per questo test
+    // in caso, ignoriamo per questo test
   }
 
   const now = new Date().toISOString();
   const keywords = body.keywords || "";
-  const vigneto = body.vigneto?.nome || "-";
+  const vigneto  = body.vigneto?.nome || "-";
 
-  const text = `TEST ONLINE OK - data server: ${now}
+  const text = `TEST ONLINE OK (Node handler)
+Data server: ${now}
 Vigneto: ${vigneto}
 Parole chiave ricevute: ${keywords}`;
 
-  return new Response(
-    JSON.stringify({ text }),
-    {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  res.status(200).json({ text });
 }
